@@ -10,7 +10,8 @@
 using namespace std;
 using namespace sf;
 
-enum stateOfGame { play, about, menu, win, exitOfGame };
+enum stateOfGame { play, about, menu, win, exitOfGame, countOfStates };
+enum stateOfMenu { toPlay, toAbout, toMenu, toExitOfGame};
 
 class TimeOfGame {
 private:
@@ -48,6 +49,11 @@ protected:
     int widthOfSprite, heightOfSprite;
     float currentFrame;
 public:
+    Entity() {
+        this->currentFrame = 0;
+        widthOfSprite = 0;
+        heightOfSprite = 0;
+    }
     Entity(Image image, Texture texture, Sprite sprite, int width, int height) {
         this->currentFrame = 0;
         this->image = image;
@@ -90,6 +96,9 @@ public:
     void setPositionOfSprite(Vector2f &position) {
         this->sprite.setPosition(position);
     }
+    void setOrigin(float x, float y) {
+        this->sprite.setOrigin(x, y);
+    }
     Image getImage() {
         return this->image;
     }
@@ -102,7 +111,15 @@ public:
     Vector2f getPositionOfSprite() {
         return this->sprite.getPosition();
     }
-    
+    void setWayToTheImage(string way) {
+        this->image.loadFromFile(way);
+        this->texture.loadFromImage(this->image);
+        this->sprite.setTexture(this->texture);
+    }
+    void setWidthAndHeight(int width, int height) {
+        this->widthOfSprite = width;
+        this->heightOfSprite = height;
+    }
 };
 
 class Alive : public Entity {
@@ -113,6 +130,12 @@ protected:
 
 
 public:
+    Alive() {
+        dx = 0; dy = 0; x = 0; y = 0; speed = 0;
+        isAlive = true;  isMove = false; isOnGround = true;
+        previousState = stay;
+        state = stay;
+    }
     Alive(Image image, Texture texture, Sprite sprite, int width, int height) : Entity(image, texture, sprite, width, height) {
         dx = 1;
         dy = 1;
@@ -180,6 +203,9 @@ public:
         }
         this->x = x;
         this->y = y;
+    }
+    void setSpeed(float speed) {
+        this->speed = speed;
     }
    
 };
@@ -265,6 +291,12 @@ private:
 
 
 public:
+    Hero() {
+    score = 0;
+    isTouchingLiana = false;
+    isEndOfTheGame = false;
+    isFallingDown = false;
+    }
     Hero(Image image, Texture texture, Sprite sprite, int width, int height) : Alive(image, texture, sprite, width, height) {
         score = 0;
         isTouchingLiana = false;
@@ -359,6 +391,7 @@ public:
         
     }
 
+
     float getX() {
         return x;
     }
@@ -379,6 +412,10 @@ private:
     float timeOfAnimation, counterOfTime;
     int numOfAnimations;
 public:
+    Item() {
+        timeOfAnimation = 0.f, counterOfTime = 0.f;
+        numOfAnimations = 0;
+    }
     Item(Image image, Texture texture, Sprite sprite, int width, int height, int numOfAnimations) : Entity(image, texture, sprite, width, height) {
         timeOfAnimation = 0.f;
         counterOfTime = 0.f;
@@ -409,25 +446,321 @@ public:
     void setTimeOfAnimation(float timeOfAnimation) {
         this->timeOfAnimation = timeOfAnimation;
     }
+    void setNumOfAnimation(int numOfAnimations) {
+        this->numOfAnimations = numOfAnimations;
+    }
     float getTimeOfAnimation() {
         return timeOfAnimation;
     }
 };
+
+class IState {
+public:
+    IState() = default;
+    ~IState() { }
+    virtual void update(TimeOfGame& timeOfGame, RenderWindow& window, stateOfGame& state) = 0;
+    virtual void handleEvent(stateOfGame& state) = 0;
+    virtual void draw(RenderWindow & window, TimeOfGame& timeOfGame) = 0;
+};
+
+class StateMenu : public IState {
+private:
+    Entity select, menuBackground;
+    stateOfMenu choice;
+public:
+    StateMenu() : IState() {
+        select.setWayToTheImage("res/txrs/menu/banana(96x96).png");
+        menuBackground.setWayToTheImage("res/txrs/menu/menuBg.png");
+        select.setOrigin(48, 48);
+        menuBackground.setPositionOfSprite(0, 0);
+        select.setPositionOfSprite(3000, 3000);
         
+    }
+    ~StateMenu() {
+
+    }
+   void update(TimeOfGame& timeOfGame, RenderWindow& window, stateOfGame &state) {
+       menuBackground.setPositionOfSprite(0, 0);
+       select.setPositionOfSprite(3000, 3000);
+        if (IntRect(440, 190, 335, 90).contains(Mouse::getPosition(window))) { select.setPositionOfSprite(387, 242); choice = toAbout; }
+        if (IntRect(440, 310, 335, 90).contains(Mouse::getPosition(window))) { select.setPositionOfSprite(387, 362); choice = toPlay; }
+        if (IntRect(440, 430, 335, 90).contains(Mouse::getPosition(window))) { select.setPositionOfSprite(387, 482); choice = toExitOfGame; }
+
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            if (choice == toAbout) { state = about; }
+            if (choice == toPlay) { state = play; }
+            if (choice == toExitOfGame) { state = exitOfGame; window.close(); }
+
+        }
+
+    }
+    void handleEvent(stateOfGame& state) {
+
+    }
+    void draw(RenderWindow& window, TimeOfGame& timeOfGame) {
+        window.draw(menuBackground.getSprite());
+        window.draw(select.getSprite());
+
+        window.display();
+    }
+};
+
+class StateAbout : public IState {
+private:
+    Entity project, aboutBackground, runningMonkey;
+    float currentFrameOfMonkey;
+public:
+    StateAbout() : IState() {
+        currentFrameOfMonkey = 0.f;
+        project.setWayToTheImage("res/txrs/about/nure.png");
+        aboutBackground.setWayToTheImage("res/txrs/about/about.png");
+        runningMonkey.setWayToTheImage("res/txrs/about/Hero(300x300).png");
+
+        Texture projectTexture, aboutBackgroundTexture, runningMonkeyTexture;
+        aboutBackground.setPositionOfSprite(0, 0);
+        runningMonkey.setOrigin(150, 150);
+        runningMonkey.setPositionOfSprite(200, 280);
+    }
+
+    ~StateAbout() {
+
+    }
+    void update(TimeOfGame& timeOfGame, RenderWindow& window, stateOfGame& state) {
+        timeOfGame.refreshTime();
+        currentFrameOfMonkey += 0.007f * timeOfGame.getTime();
+        if (currentFrameOfMonkey > 3) currentFrameOfMonkey -= 3;
+        runningMonkey.setTextureRect(300 * int(currentFrameOfMonkey), 0, 300, 300);
+        if (IntRect(440, 430, 335, 90).contains(Mouse::getPosition(window))) { project.setPositionOfSprite(411, 432); }
+        else {
+            project.setPositionOfSprite(3000, 3000);
+        }
+    }
+    void handleEvent(stateOfGame& state) {
+        if (Keyboard::isKeyPressed(Keyboard::Escape)) {
+            state = menu;
+        }
+    }
+    void draw(RenderWindow& window, TimeOfGame& timeOfGame) {
+        window.draw(aboutBackground.getSprite());
+        window.draw(runningMonkey.getSprite());
+        window.draw(project.getSprite());
+
+        window.display();
+    }
+
+};
+
+class StatePlay : public IState {
+private:
+    Entity map;
+    Item banana, stackOfBananas, goldCup;
+    Hero hero;
+    Font font;
+    Text score;
+
+public:
+    StatePlay() : IState() {
+
+        map.setWayToTheImage("res/txrs/map/TileMapNew.png");
+        
+
+        banana.setWayToTheImage("res/txrs/items/Banana(40x40).png");
+        banana.setWidthAndHeight(40, 40);
+        banana.setNumOfAnimation(6);
+        banana.setTimeOfAnimation(12000);
+
+        stackOfBananas.setWayToTheImage("res/txrs/items/Bananas(60x60).png");
+        stackOfBananas.setWidthAndHeight(60, 60);
+        stackOfBananas.setNumOfAnimation(6);
+        stackOfBananas.setTimeOfAnimation(12000);
+
+        goldCup.setWayToTheImage("res/txrs/items/GoldCup(50x50).png");
+        goldCup.setWidthAndHeight(50, 50);
+        goldCup.setNumOfAnimation(8);
+        goldCup.setTimeOfAnimation(6000);
+
+        hero.setWayToTheImage("res/txrs/alive/Hero(100x100).png");
+        hero.setOrigin(50, 50);
+        hero.setDXY(0.f, 0.f);
+        hero.setXY(100.f, 2290.f);
+        hero.setPositionOfSprite(150.f, 2340.f);
+        hero.setSpeed(0.2f);
+        hero.setWidthAndHeight(100, 100);
+        
+        view.reset(FloatRect(0, 0, 800, 600));
+        hero.setTextureRect(0, 0, 100, 100);
+        mapObjectsCounter();
+
+        font.loadFromFile("res/fonts/old_pixel-7.ttf");
+        score.setCharacterSize(65);
+        score.setFont(font);
+        score.setFillColor(Color::Yellow);
+        score.setStyle(Text::Bold);
+
+    }
+
+    ~StatePlay() {
+
+    }
+    void update(TimeOfGame& timeOfGame, RenderWindow& window, stateOfGame& state) {
+        if (hero.getStateOfTheGame()) {
+            state = win;
+        }
+        
+        timeOfGame.refreshTime();
+        window.setView(view);
+
+   
+            hero.moveUpdate(timeOfGame);
+
+
+        ostringstream heroScore;
+        heroScore << hero.getScore();
+        score.setString("Score " + heroScore.str());
+        score.setPosition(view.getCenter().x - 90, view.getCenter().y - 300);
+        
+    }
+    void handleEvent(stateOfGame& state) {
+        if (hero.getStateOfTheGame()) {
+            state = win;
+        }
+        if (Keyboard::isKeyPressed(Keyboard::Escape)) {
+            state = menu;
+        }
+    }
+    void draw(RenderWindow& window, TimeOfGame& timeOfGame) {
+        window.clear();
+        for (int i = 0; i < HEIGHT_MAP; i++) {
+            for (int j = 0; j < WIDTH_MAP; j++) {
+                if (TileMap[i][j] == ' ') map.setTextureRect(0, 0, 50, 50);
+                if (TileMap[i][j] == '1') map.setTextureRect(250, 0, 50, 50);
+                if (TileMap[i][j] == '0') map.setTextureRect(50, 0, 50, 50);
+                if (TileMap[i][j] == 'd') map.setTextureRect(300, 0, 50, 50);
+                if (TileMap[i][j] == '=') map.setTextureRect(100, 0, 50, 50);
+                if (TileMap[i][j] == '<') map.setTextureRect(150, 0, 50, 50);
+                if (TileMap[i][j] == '>') map.setTextureRect(200, 0, 50, 50);
+
+                if (TileMap[i][j] == 'e') {
+                    banana.setPositionOfSprite((WIDTH_MAP + 1) * 50, (HEIGHT_MAP + 1) * 50);
+                }
+
+                map.setPositionOfSprite(j * 50, i * 50);
+                window.draw(map.getSprite());
+                if ((TileMap[i][j] == 'b')) {
+                    banana.animation(timeOfGame, counterBananas);
+                    banana.setPositionOfSprite(j * 50, i * 50);
+                    window.draw(banana.getSprite());
+                }
+                if ((TileMap[i][j] == 's')) {
+                    stackOfBananas.animation(timeOfGame, counterStackOfBananas);
+                    stackOfBananas.setPositionOfSprite(j * 50, i * 50);
+                    window.draw(stackOfBananas.getSprite());
+                }
+                if ((TileMap[i][j] == 'g')) {
+                    goldCup.animation(timeOfGame, 1);
+                    goldCup.setPositionOfSprite(j * 50, i * 50);
+                    window.draw(goldCup.getSprite());
+                }
+            }
+        }
+        mapObjectsCounter();
+        window.draw(hero.getSprite());
+        window.draw(score);
+        window.display();
+
+
+    }
+
+};
+
+class StateWin : public IState {
+private:
+    Entity winBackground, cup;
+    
+
+
+public:
+    StateWin() : IState() {
+        winBackground.setWayToTheImage("res/txrs/win/win.png");
+        cup.setWayToTheImage("res/txrs/win/cup(200x200).png");
+        winBackground.setPositionOfSprite(0, 0);
+        cup.setOrigin(150, 150);
+        cup.setPositionOfSprite(457, 430);
+    }
+
+    ~StateWin() {
+
+    }
+    void update(TimeOfGame& timeOfGame, RenderWindow& window, stateOfGame& state) {
+        static float currentFrameOfCup = 0.f;
+        timeOfGame.refreshTime();
+        currentFrameOfCup += 0.007f * timeOfGame.getTime();
+        if (currentFrameOfCup > 8) currentFrameOfCup -= 8;
+        cup.setTextureRect(200 * int(currentFrameOfCup), 0, 200, 200);
+    }
+    void handleEvent(stateOfGame& state) {
+        if (Keyboard::isKeyPressed(Keyboard::Escape)) {
+            state = menu;
+        }
+    }
+    void draw(RenderWindow& window, TimeOfGame& timeOfGame) {
+        window.draw(winBackground.getSprite());
+        window.draw(cup.getSprite());
+        window.display();
+    }
+
+};
+
+
+
+
 
 class Game {
 private:
-    Font font;
-   
-    stateOfGame choice;
     stateOfGame state;
 public:
     Game() {
-        choice = menu;
         state = menu;
     }
 
-    
+    int game() {
+        Image icon;
+        icon.loadFromFile("res/icon/icon.png");
+        sf::RenderWindow window(sf::VideoMode(800, 600), "Banana Jump");
+        TimeOfGame timeOfGame(1000);
+        window.setIcon(32, 32, icon.getPixelsPtr());
+
+        IState* States[exitOfGame] = { new StatePlay, new StateAbout, new StateMenu, new StateWin };
+        IState* current_state = States[menu];
+
+        while (state != exitOfGame) {
+            current_state = States[state];
+            window.clear();
+            Event event;
+            while (window.pollEvent(event))
+            {
+                if (event.type == Event::Closed)
+                    window.close();
+            }
+            timeOfGame.refreshTime();
+            current_state->handleEvent(state);
+            if (current_state != States[state]) {
+                continue;
+            }
+            current_state->update(timeOfGame, window, state);
+            current_state->draw(window, timeOfGame);
+        }
+        if (state == exitOfGame) {
+           // delete[] States;
+            window.close();
+        }
+        
+        return 0;
+    }
+};
+
+ /*
     int game() {
         Image icon;
         icon.loadFromFile("res/icon/icon.png");
@@ -675,6 +1008,7 @@ public:
     } 
     
 };
+*/
 
 
 int main() {
