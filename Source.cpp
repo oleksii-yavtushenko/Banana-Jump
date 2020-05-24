@@ -527,7 +527,6 @@ public:
 
     }
     void update(TimeOfGame& timeOfGame, RenderWindow& window, stateOfGame& state) {
-        timeOfGame.refreshTime();
         currentFrameOfMonkey += 0.007f * timeOfGame.getTime();
         if (currentFrameOfMonkey > 3) currentFrameOfMonkey -= 3;
         runningMonkey.setTextureRect(300 * int(currentFrameOfMonkey), 0, 300, 300);
@@ -607,19 +606,14 @@ public:
         if (hero.getStateOfTheGame()) {
             state = win;
         }
-        
-        timeOfGame.refreshTime();
-        window.setView(view);
-
-   
-            hero.moveUpdate(timeOfGame);
-
 
         ostringstream heroScore;
         heroScore << hero.getScore();
         score.setString("Score " + heroScore.str());
         score.setPosition(view.getCenter().x - 90, view.getCenter().y - 300);
-        
+        window.clear();
+        window.setView(view);
+        hero.moveUpdate(timeOfGame); 
     }
     void handleEvent(stateOfGame& state) {
         if (hero.getStateOfTheGame()) {
@@ -694,7 +688,6 @@ public:
     }
     void update(TimeOfGame& timeOfGame, RenderWindow& window, stateOfGame& state) {
         static float currentFrameOfCup = 0.f;
-        timeOfGame.refreshTime();
         currentFrameOfCup += 0.007f * timeOfGame.getTime();
         if (currentFrameOfCup > 8) currentFrameOfCup -= 8;
         cup.setTextureRect(200 * int(currentFrameOfCup), 0, 200, 200);
@@ -728,11 +721,11 @@ public:
         Image icon;
         icon.loadFromFile("res/icon/icon.png");
         sf::RenderWindow window(sf::VideoMode(800, 600), "Banana Jump");
-        TimeOfGame timeOfGame(1000);
+        TimeOfGame timeOfGame(1000.f);
         window.setIcon(32, 32, icon.getPixelsPtr());
 
         IState* States[exitOfGame] = { new StatePlay, new StateAbout, new StateMenu, new StateWin };
-        IState* current_state = States[menu];
+        IState* current_state = States[state];
 
         while (state != exitOfGame) {
             current_state = States[state];
