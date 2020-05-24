@@ -25,8 +25,17 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resource1.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Banana Jump1.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\icon\icon.ico" />
   </ItemGroup>
 </Project>
