@@ -1,7 +1,5 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
-#include <cmath>
-#include <vector>
 #include <string>
 #include <sstream>
 #include "map.h"
@@ -215,8 +213,55 @@ private:
     bool isTouchingLiana, isFallingDown, isEndOfTheGame;
     int score; 
 
-    
+    void move(TimeOfGame& timeOfGame) {
+        if ((Keyboard::isKeyPressed(Keyboard::Left)) && isOnGround && !isFallingDown) {
+            previousState = state;
+            state = left;
+            speed = 0.25f;
+            currentFrame += 0.01f * timeOfGame.getTime();
+            if (currentFrame > 3) currentFrame -= 3;
+            sprite.setTextureRect(IntRect(widthOfSprite * int(currentFrame), heightOfSprite, widthOfSprite, heightOfSprite));
+        }
+        if ((Keyboard::isKeyPressed(Keyboard::Right)) && isOnGround && !isFallingDown) {
+            previousState = state;
+            state = right;
+            speed = 0.25f;
+            currentFrame += 0.01f * timeOfGame.getTime();
+            if (currentFrame > 3) currentFrame -= 3;
+            sprite.setTextureRect(IntRect(widthOfSprite * int(currentFrame), 0, widthOfSprite, heightOfSprite));
+        }
+        if ((Keyboard::isKeyPressed(Keyboard::Up) || Keyboard::isKeyPressed(Keyboard::Space)) && isOnGround && !isTouchingLiana) {
+            dy = -0.8f;
+            isOnGround = false;
+            currentFrame = 2;
+            if (currentFrame == 3) { currentFrame -= 3; }
+            if (previousState == right) {
+                sprite.setTextureRect(IntRect(widthOfSprite * int(currentFrame), heightOfSprite * 2, widthOfSprite, heightOfSprite));
+            }
+            else if (previousState == left) {
+                sprite.setTextureRect(IntRect(widthOfSprite * int(currentFrame), heightOfSprite * 3, widthOfSprite, heightOfSprite));
+            }
+            previousState = state;
+            state = jump;
 
+        }
+        if ((!Keyboard::isKeyPressed(Keyboard::Left)) && (!Keyboard::isKeyPressed(Keyboard::Right)) && (!Keyboard::isKeyPressed(Keyboard::Up)) && (!Keyboard::isKeyPressed(Keyboard::Space)) && isOnGround) {
+            speed = 0;
+            currentFrame = 0;
+            if (previousState == right) {
+                currentFrame = 0;
+                sprite.setTextureRect(IntRect(0, 0, widthOfSprite, heightOfSprite));
+            }
+            else if (previousState == left) {
+                currentFrame = 0;
+                sprite.setTextureRect(IntRect(0, heightOfSprite, widthOfSprite, heightOfSprite));
+            }
+            previousState = state;
+            state = stay;
+        }
+
+    }
+    
     void checkCollisionWithMap(float Dx, float Dy) {
         for (int i = y / 50; i < (y + heightOfSprite) / 50 && i < 50; i++) {
             for (int j = x / 50; j < (x + widthOfSprite) / 50 && j < 50; j++) {
@@ -342,55 +387,6 @@ public:
     }
     
     
-    void move(TimeOfGame& timeOfGame) {
-        if ((Keyboard::isKeyPressed(Keyboard::Left)) && isOnGround && !isFallingDown) {
-            previousState = state;
-            state = left;
-            speed = 0.25f;
-            currentFrame += 0.01f * timeOfGame.getTime();
-            if (currentFrame > 3) currentFrame -= 3; 
-            sprite.setTextureRect(IntRect(widthOfSprite * int(currentFrame), heightOfSprite, widthOfSprite, heightOfSprite)); 
-        }
-        if ((Keyboard::isKeyPressed(Keyboard::Right)) && isOnGround && !isFallingDown) {
-            previousState = state;
-            state = right;
-            speed = 0.25f;
-            currentFrame += 0.01f * timeOfGame.getTime(); 
-            if (currentFrame > 3) currentFrame -= 3; 
-            sprite.setTextureRect(IntRect(widthOfSprite * int(currentFrame), 0, widthOfSprite, heightOfSprite));
-        }
-        if ((Keyboard::isKeyPressed(Keyboard::Up)  || Keyboard::isKeyPressed(Keyboard::Space)) && isOnGround && !isTouchingLiana) {
-            dy = -0.8f;
-            isOnGround = false;
-            currentFrame = 2;
-            if (currentFrame == 3) { currentFrame -= 3; }
-            if (previousState == right) {
-                sprite.setTextureRect(IntRect(widthOfSprite * int(currentFrame), heightOfSprite * 2, widthOfSprite, heightOfSprite));
-            }
-            else if (previousState == left) {
-                sprite.setTextureRect(IntRect(widthOfSprite * int(currentFrame), heightOfSprite * 3, widthOfSprite, heightOfSprite));
-            }
-            previousState = state;
-            state = jump;
-           
-        }
-        if ((!Keyboard::isKeyPressed(Keyboard::Left)) && (!Keyboard::isKeyPressed(Keyboard::Right)) && (!Keyboard::isKeyPressed(Keyboard::Up)) && (!Keyboard::isKeyPressed(Keyboard::Space)) && isOnGround) {
-            speed = 0;
-            currentFrame = 0;
-            if (previousState == right) {
-                currentFrame = 0;
-                sprite.setTextureRect(IntRect(0, 0, widthOfSprite, heightOfSprite));
-            }
-            else if (previousState == left) {
-                currentFrame = 0;
-                sprite.setTextureRect(IntRect(0, heightOfSprite, widthOfSprite, heightOfSprite));
-            }
-            previousState = state;
-            state = stay;
-        }
-        
-    }
-
 
     float getX() {
         return x;
@@ -501,7 +497,6 @@ public:
     void draw(RenderWindow& window, TimeOfGame& timeOfGame) {
         window.draw(menuBackground.getSprite());
         window.draw(select.getSprite());
-
         window.display();
     }
 };
@@ -620,7 +615,7 @@ public:
             state = win;
         }
         if (Keyboard::isKeyPressed(Keyboard::Escape)) {
-            state = menu;
+            state = exitOfGame;
         }
     }
     void draw(RenderWindow& window, TimeOfGame& timeOfGame) {
@@ -663,7 +658,6 @@ public:
         window.draw(score);
         window.display();
 
-
     }
 
 };
@@ -671,7 +665,7 @@ public:
 class StateWin : public IState {
 private:
     Entity winBackground, cup;
-    
+    float currentFrameOfCup;
 
 
 public:
@@ -681,13 +675,13 @@ public:
         winBackground.setPositionOfSprite(0, 0);
         cup.setOrigin(150, 150);
         cup.setPositionOfSprite(457, 430);
+        currentFrameOfCup = 0.f;
     }
 
     ~StateWin() {
 
     }
     void update(TimeOfGame& timeOfGame, RenderWindow& window, stateOfGame& state) {
-        static float currentFrameOfCup = 0.f;
         currentFrameOfCup += 0.007f * timeOfGame.getTime();
         if (currentFrameOfCup > 8) currentFrameOfCup -= 8;
         cup.setTextureRect(200 * int(currentFrameOfCup), 0, 200, 200);
@@ -705,10 +699,6 @@ public:
 
 };
 
-
-
-
-
 class Game {
 private:
     stateOfGame state;
@@ -720,7 +710,7 @@ public:
     int game() {
         Image icon;
         icon.loadFromFile("res/icon/icon.png");
-        sf::RenderWindow window(sf::VideoMode(800, 600), "Banana Jump");
+        sf::RenderWindow window(sf::VideoMode(800, 600), "Banana Jump", Style::None);
         TimeOfGame timeOfGame(1000.f);
         window.setIcon(32, 32, icon.getPixelsPtr());
 
@@ -728,24 +718,23 @@ public:
         IState* current_state = States[state];
 
         while (state != exitOfGame) {
-            current_state = States[state];
+                current_state = States[state];
             window.clear();
             Event event;
             while (window.pollEvent(event))
             {
-                if (event.type == Event::Closed)
+                if (event.type == Event::Closed) {
+                    state = exitOfGame;
                     window.close();
+                }
             }
             timeOfGame.refreshTime();
             current_state->handleEvent(state);
-            if (current_state != States[state]) {
-                continue;
-            }
+            
             current_state->update(timeOfGame, window, state);
             current_state->draw(window, timeOfGame);
         }
         if (state == exitOfGame) {
-           // delete[] States;
             window.close();
         }
         
@@ -753,257 +742,7 @@ public:
     }
 };
 
- /*
-    int game() {
-        Image icon;
-        icon.loadFromFile("res/icon/icon.png");
-
-        while (state != exitOfGame) {
-            sf::RenderWindow window(sf::VideoMode(800, 600), "Banana Jump", Style::None);
-            window.setIcon(32, 32, icon.getPixelsPtr());
-            sf::Event event;
-            while (window.pollEvent(event))
-            {
-                if (event.type == sf::Event::Closed)
-                    window.close();
-            }
-            switch (state) {
-            case menu: loadMenu(window); break;
-            case play: loadPlay(window); break;
-            case about: loadAbout(window); break;
-            case win: loadWin(window); break;
-            case exitOfGame: window.close(); break;
-            }
-        } return 0;
-    }
-
-    void loadWin(RenderWindow& window) {
-        window.clear();
-        Texture winBackgroundTexture, cupTexture;
-        winBackgroundTexture.loadFromFile("res/txrs/win/win.png");
-        cupTexture.loadFromFile("res/txrs/win/cup(200x200).png");
-        Sprite winBackground(winBackgroundTexture), cup(cupTexture);
-        winBackground.setPosition(0, 0);
-        cup.setOrigin(150, 150);
-        cup.setPosition(457, 430);
-        float currentFrameOfCup = 0;
-        TimeOfGame timeWin(1000);
-
-        while (state == win) {
-            window.clear();
-            state = win;
-            if (Keyboard::isKeyPressed(Keyboard::Escape)) {
-                state = menu;
-                break;
-            }
-            
-            timeWin.refreshTime();
-            currentFrameOfCup += 0.007f * timeWin.getTime();
-            if (currentFrameOfCup > 8) currentFrameOfCup -= 8;
-            cup.setTextureRect(IntRect(200 * int(currentFrameOfCup), 0, 200, 200));
-
-            Event event;
-            while (window.pollEvent(event)) {
-                if (event.type == Event::Closed) {
-                    state = exitOfGame;
-                }
-            }
-            window.draw(winBackground);
-            window.draw(cup);
-
-            window.display();
-        }
-    }
-
-
-    void loadAbout(RenderWindow& window) {
-        window.clear();
-        Texture projectTexture, aboutBackgroundTexture, runningMonkeyTexture;
-        projectTexture.loadFromFile("res/txrs/about/nure.png");
-        aboutBackgroundTexture.loadFromFile("res/txrs/about/about.png");
-        runningMonkeyTexture.loadFromFile("res/txrs/about/Hero(300x300).png");
-        Sprite project(projectTexture), aboutBackground(aboutBackgroundTexture), runningMonkey(runningMonkeyTexture);
-        aboutBackground.setPosition(0, 0);
-        runningMonkey.setOrigin(150, 150);
-        runningMonkey.setPosition(200, 280);
-        float currentFrameOfMonkey = 0;
-        TimeOfGame timeAbout(1000);
-
-        while (state == about) {
-            window.clear();
-            state = about;
-            if (Keyboard::isKeyPressed(Keyboard::Escape)) {
-                state = menu;
-                break;
-            }
-            timeAbout.refreshTime();
-            currentFrameOfMonkey += 0.007f * timeAbout.getTime();
-            if (currentFrameOfMonkey > 3) currentFrameOfMonkey -= 3;
-            runningMonkey.setTextureRect(IntRect(300 * int(currentFrameOfMonkey), 0, 300, 300));
-
-            Event event;
-            while (window.pollEvent(event))  {
-                if (event.type == Event::Closed) {
-                    state = exitOfGame;
-                }
-            }
-            if (IntRect(440, 430, 335, 90).contains(Mouse::getPosition(window))) { project.setPosition(411, 432); }
-            else {
-                project.setPosition(3000, 3000);
-            }
-            window.draw(aboutBackground);
-            window.draw(runningMonkey);
-            window.draw(project);
-
-            window.display();
-        }
-    }
-
-    void loadMenu(RenderWindow& window) {
-        window.clear();
-        Texture select, menuBackground;
-        select.loadFromFile("res/txrs/menu/banana(96x96).png");
-        menuBackground.loadFromFile("res/txrs/menu/menuBg.png");
-        Sprite selectSprite(select), menuBackgroundSprite(menuBackground);
-        menuBackgroundSprite.setPosition(0, 0);
-        selectSprite.setOrigin(48, 48);
-        selectSprite.setPosition(3000, 3000);
-
-        while (state == menu) {
-            
-            state = menu;
-            Event event;
-            while (window.pollEvent(event)) {
-                if (event.type == Event::Closed) {
-                    state = exitOfGame;
-                }
-            }
-            window.clear();
-            if (IntRect(440, 190, 335, 90).contains(Mouse::getPosition(window))) { selectSprite.setPosition(387, 242); choice = about; }
-            if (IntRect(440, 310, 335, 90).contains(Mouse::getPosition(window))) { selectSprite.setPosition(387, 362); choice = play; }
-            if (IntRect(440, 430, 335, 90).contains(Mouse::getPosition(window))) { selectSprite.setPosition(387, 482); choice = exitOfGame; }
-
-            if (Mouse::isButtonPressed(Mouse::Left))
-            {
-                if (choice == about) { state = about; }
-                if (choice == play) { state = play; }
-                if (choice == exitOfGame) { state = exitOfGame; window.close(); }
-
-            }
-
-            window.draw(menuBackgroundSprite);
-            window.draw(selectSprite);
-
-            window.display();
-        }
-    }
-
-
-    void loadPlay(RenderWindow& window) {
-
-        Image mapImg;
-        mapImg.loadFromFile("res/txrs/map/TileMapNew.png");
-        Texture mapTexture;
-        mapTexture.loadFromImage(mapImg);
-        Sprite mapSprite;
-        mapSprite.setTexture(mapTexture);
-
-        Item banana("res/txrs/items/Banana(40x40).png", 40, 40, 6);
-        banana.setTimeOfAnimation(12000);
-       
-
-        Item stackOfBananas("res/txrs/items/Bananas(60x60).png", 60, 60, 6);
-        stackOfBananas.setTimeOfAnimation(12000);
-       
-
-        Item goldCup("res/txrs/items/GoldCup(50x50).png", 50, 50, 8);
-        goldCup.setTimeOfAnimation(3000);
-        
-
-        Hero hero("res/txrs/alive/Hero(100x100).png", 0, 0, 100, 2290, 0.2f, 100, 100);
-        
-        
-
-        view.reset(FloatRect(0, 0, 800, 600));
-
-        hero.setTextureRect(0, 0, 100, 100);
-
-        TimeOfGame timeOfGame(1000.f);
-
-
-        mapObjectsCounter();
-
-        font.loadFromFile("res/fonts/old_pixel-7.ttf");
-        Text score("", font, 65);
-        score.setFillColor(Color::Yellow);
-        score.setStyle(Text::Bold);
-
-       
-        while (!Keyboard::isKeyPressed(Keyboard::Escape) && state != exitOfGame && state != win) {
-            if (hero.getStateOfTheGame()) {
-                state = win;
-                break;
-            }
-            timeOfGame.refreshTime();
-            Event event;
-            while (window.pollEvent(event)) {
-                if (event.type == Event::Closed) {
-                    state = exitOfGame; 
-                }
-            }
-            window.setView(view);
-            window.clear();
-            hero.moveUpdate(timeOfGame);
-            for (int i = 0; i < HEIGHT_MAP; i++) {
-                for (int j = 0; j < WIDTH_MAP; j++) {
-                    if (TileMap[i][j] == ' ') mapSprite.setTextureRect(IntRect(0, 0, 50, 50));
-                    if (TileMap[i][j] == '1') mapSprite.setTextureRect(IntRect(250, 0, 50, 50));
-                    if (TileMap[i][j] == '0') mapSprite.setTextureRect(IntRect(50, 0, 50, 50));
-                    if (TileMap[i][j] == 'd') mapSprite.setTextureRect(IntRect(300, 0, 50, 50));
-                    if (TileMap[i][j] == '=') mapSprite.setTextureRect(IntRect(100, 0, 50, 50));
-                    if (TileMap[i][j] == '<') mapSprite.setTextureRect(IntRect(150, 0, 50, 50));
-                    if (TileMap[i][j] == '>') mapSprite.setTextureRect(IntRect(200, 0, 50, 50));
-
-                    if (TileMap[i][j] == 'e') {
-                        banana.setPositionOfSprite((WIDTH_MAP + 1) * 50, (HEIGHT_MAP + 1) * 50);
-                    }
-
-                            mapSprite.setPosition(j * 50, i * 50);
-                    window.draw(mapSprite);
-                    if ((TileMap[i][j] == 'b')) {
-                        banana.animation(timeOfGame, counterBananas);
-                        banana.setPositionOfSprite(j * 50, i * 50);
-                        window.draw(banana.getSprite());
-                    }
-                    if ((TileMap[i][j] == 's')) {
-                        stackOfBananas.animation(timeOfGame, counterStackOfBananas);
-                        stackOfBananas.setPositionOfSprite(j * 50, i * 50);
-                        window.draw(stackOfBananas.getSprite());
-                    }
-                    if ((TileMap[i][j] == 'g')) {
-                        goldCup.animation(timeOfGame, 1);
-                        goldCup.setPositionOfSprite(j * 50, i * 50);
-                        window.draw(goldCup.getSprite());
-                    }
-                    
-                }
-            }
-            mapObjectsCounter();
-            ostringstream heroScore;
-            heroScore << hero.getScore();
-            score.setString("Score " + heroScore.str());
-            score.setPosition(view.getCenter().x - 90, view.getCenter().y - 300);
-            
-            window.draw(hero.getSprite());
-            window.draw(score);
-            window.display();
-        }
-    } 
-    
-};
-*/
-
-
+ 
 int main() {
     Game game;
     game.game();
